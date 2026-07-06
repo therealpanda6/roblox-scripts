@@ -1,105 +1,144 @@
+-- ==========================================
+--  TỐI ƯU HÓA TOÀN DIỆN & HUD RGB GAMING 
+-- ==========================================
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats")
 local TeleportService = game:GetService("TeleportService")
-local VirtualUser = game:GetService("VirtualUser")
 local Lighting = game:GetService("Lighting")
-local UserInputService = game:GetService("UserInputService")
-local GuiService = game:GetService("GuiService")
+local VirtualUser = game:GetService("VirtualUser")
+local Workspace = game:GetService("Workspace")
+local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 
--- =========================================
--- 1. XÓA HIỆU ỨNG & TỐI ƯU HÓA (FPS BOOST)
--- =========================================
-settings().Rendering.QualityLevel = 1
+-- ==========================================
+-- 1. TÍNH NĂNG ANTI-AFK
+-- ==========================================
+LocalPlayer.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
+
+-- ==========================================
+-- 2. TỰ ĐỘNG KẾT NỐI LẠI (AUTO REJOIN)
+-- ==========================================
+pcall(function()
+    local promptOverlay = CoreGui:WaitForChild("RobloxPromptGui"):WaitForChild("promptOverlay")
+    promptOverlay.ChildAdded:Connect(function(child)
+        if child.Name == "ErrorPrompt" then
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+        end
+    end)
+end)
+
+-- ==========================================
+-- 3. TỐI ƯU HÓA FPS & XÓA HIỆU ỨNG (FIX LAG)
+-- ==========================================
 Lighting.GlobalShadows = false
 Lighting.FogEnd = 9e9
-Lighting.Brightness = 1
+Lighting.Brightness = 2
 
-for _, v in pairs(game:GetDescendants()) do
-    if v:IsA("Part") or v:IsA("Union") or v:IsA("MeshPart") then
-        v.Material = Enum.Material.Plastic
-        v.Reflectance = 0
-    elseif v:IsA("Decal") or v:IsA("Texture") then
-        v.Transparency = 1
-    elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
-        v.Enabled = false
-    elseif v:IsA("PostEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("BloomEffect") or v:IsA("DepthOfFieldEffect") then
-        v.Enabled = false
+Workspace.Terrain.WaterWaveSize = 0
+Workspace.Terrain.WaterWaveSpeed = 0
+Workspace.Terrain.WaterReflectance = 0
+Workspace.Terrain.WaterTransparency = 0
+
+local function optimizeDescendant(descendant)
+    if descendant:IsA("BasePart") then
+        descendant.Material = Enum.Material.SmoothPlastic
+        descendant.Reflectance = 0
+    elseif descendant:IsA("Decal") or descendant:IsA("Texture") then
+        descendant.Transparency = 1
+    elseif descendant:IsA("ParticleEmitter") or descendant:IsA("Trail") or descendant:IsA("Smoke") or descendant:IsA("Fire") or descendant:IsA("Sparkles") then
+        descendant.Enabled = false
+    elseif descendant:IsA("PostEffect") or descendant:IsA("Atmosphere") or descendant:IsA("Clouds") then
+        descendant.Enabled = false
     end
 end
 
--- =========================================
--- 2. ANTI-AFK (CHỐNG KICK TREO MÁY)
--- =========================================
-LocalPlayer.Idled:Connect(function()
-    VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-    task.wait(1)
-    VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-end)
-
--- =========================================
--- 3. AUTO-REJOIN (TỰ ĐỘNG VÀO LẠI KHI DISCONNECT)
--- =========================================
-GuiService.ErrorMessageChanged:Connect(function()
-    task.wait(2)
-    TeleportService:Teleport(game.PlaceId, LocalPlayer)
-end)
-
--- =========================================
--- 4. GIAO DIỆN ĐỒNG HỒ FPS RGB GAMING
--- =========================================
-local guiParent
-local success = pcall(function() guiParent = game:GetService("CoreGui") end)
-if not success or not guiParent then
-    guiParent = LocalPlayer:WaitForChild("PlayerGui")
+for _, v in pairs(game:GetDescendants()) do
+    pcall(optimizeDescendant, v)
 end
+game.DescendantAdded:Connect(function(descendant)
+    pcall(optimizeDescendant, descendant)
+end)
 
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "RGB_FPS_Monitor"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = guiParent
+-- ==========================================
+-- 4. TẠO GIAO DIỆN HUD PIXEL-PERFECT (SỬA LỖI)
+-- ==========================================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "RGB_Gaming_HUD"
+ScreenGui.DisplayOrder = 999999999 
+ScreenGui.ResetOnSpawn = false
 
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 140, 0, 45)
-mainFrame.Position = UDim2.new(0.5, -70, 0.05, 0)
-mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-mainFrame.BorderSizePixel = 0
-mainFrame.Parent = screenGui
+local success = pcall(function() ScreenGui.Parent = CoreGui end)
+if not success then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
-local uiCorner = Instance.new("UICorner")
-uiCorner.CornerRadius = UDim.new(0, 8)
-uiCorner.Parent = mainFrame
+-- Frame chính (Nền đen tuyệt đối)
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 320, 0, 80)
+MainFrame.Position = UDim2.new(0, 10, 0, 60) -- Nằm góc trái dưới chat/logo hợp lý
+MainFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = ScreenGui
 
-local uiStrokeFrame = Instance.new("UIStroke")
-uiStrokeFrame.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-uiStrokeFrame.Thickness = 2.5
-uiStrokeFrame.Parent = mainFrame
+-- Viền cầu vồng sắc nét (Sharp Border)
+local BorderStroke = Instance.new("UIStroke")
+BorderStroke.Thickness = 2
+BorderStroke.Parent = MainFrame
 
-local fpsText = Instance.new("TextLabel")
-fpsText.Size = UDim2.new(1, 0, 1, 0)
-fpsText.BackgroundTransparency = 1
-fpsText.Text = "FPS: ..."
-fpsText.Font = Enum.Font.GothamBlack
-fpsText.TextSize = 22
-fpsText.Parent = mainFrame
+-- Khung hiệu ứng Glow phát sáng (Đặt trùng khít tọa độ gốc 0,0)
+local GlowFrame = Instance.new("Frame")
+GlowFrame.Size = UDim2.new(1, 0, 1, 0)
+GlowFrame.Position = UDim2.new(0, 0, 0, 0)
+GlowFrame.BackgroundTransparency = 1
+GlowFrame.BorderSizePixel = 0
+GlowFrame.Parent = MainFrame
 
-local uiStrokeText = Instance.new("UIStroke")
-uiStrokeText.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
-uiStrokeText.Thickness = 1.2
-uiStrokeText.Transparency = 0.2
-uiStrokeText.Parent = fpsText
+local GlowStroke = Instance.new("UIStroke")
+GlowStroke.Thickness = 6
+GlowStroke.Transparency = 0.6 -- Tạo độ nhòe ánh sáng phát quang ngoài viền
+GlowStroke.Parent = GlowFrame
 
--- Logic Kéo Thả (Draggable)
-local dragging = false
-local dragInput, dragStart, startPos
+-- Dòng 1: FPS & PING (Cố định vị trí bằng pixel, căn giữa hoàn hảo)
+local Line1 = Instance.new("TextLabel")
+Line1.Size = UDim2.new(1, 0, 0, 30)
+Line1.Position = UDim2.new(0, 0, 0, 12) -- Cách lề trên 12px
+Line1.BackgroundTransparency = 1
+Line1.Font = Enum.Font.Arcade
+Line1.TextSize = 16 -- Sử dụng kích thước cố định để chữ không bị tràn/bóp méo
+Line1.TextXAlignment = Enum.TextXAlignment.Center
+Line1.TextYAlignment = Enum.TextYAlignment.Center
+Line1.TextStrokeTransparency = 0.4
+Line1.TextStrokeColor3 = Color3.new(0, 0, 0)
+Line1.Parent = MainFrame
 
-mainFrame.InputBegan:Connect(function(input)
+-- Dòng 2: TIME & RUN TIME
+local Line2 = Instance.new("TextLabel")
+Line2.Size = UDim2.new(1, 0, 0, 30)
+Line2.Position = UDim2.new(0, 0, 0, 42) -- Cách lề trên 42px (khoảng cách an toàn)
+Line2.BackgroundTransparency = 1
+Line2.Font = Enum.Font.Arcade
+Line2.TextSize = 16
+Line2.TextXAlignment = Enum.TextXAlignment.Center
+Line2.TextYAlignment = Enum.TextYAlignment.Center
+Line2.TextStrokeTransparency = 0.4
+Line2.TextStrokeColor3 = Color3.new(0, 0, 0)
+Line2.Parent = MainFrame
+
+-- ==========================================
+-- 5. TÍNH NĂNG KÉO THẢ (DRAGGABLE KHÔNG LỆCH)
+-- ==========================================
+local dragging, dragInput, dragStart, startPos
+
+MainFrame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
         dragStart = input.Position
-        startPos = mainFrame.Position
-        
+        startPos = MainFrame.Position
+
         input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then
                 dragging = false
@@ -108,44 +147,72 @@ mainFrame.InputBegan:Connect(function(input)
     end
 end)
 
-mainFrame.InputChanged:Connect(function(input)
+MainFrame.InputChanged:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
         dragInput = input
     end
 end)
 
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+RunService.Heartbeat:Connect(function()
+    if dragging and dragInput then
+        local delta = dragInput.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
 
--- =========================================
--- 5. CẬP NHẬT FPS (MỖI 1 GIÂY) & HIỆU ỨNG RGB
--- =========================================
-local lastUpdate = tick()
-local frameCount = 0
+-- ==========================================
+-- 6. CẬP NHẬT THÔNG SỐ & HIỆU ỨNG RGB
+-- ==========================================
+local startTime = tick()
+local frames = 0
+local currentFPS = 0
+
+task.spawn(function()
+    while task.wait(1) do
+        currentFPS = frames
+        frames = 0
+    end
+end)
 
 RunService.RenderStepped:Connect(function()
-    frameCount = frameCount + 1
-    local currentTime = tick()
+    frames = frames + 1
     
-    -- Thay đổi điều kiện: Tính toán và cập nhật số FPS đúng mỗi 1.0 giây
-    if currentTime - lastUpdate >= 1.0 then
-        local fps = math.floor(frameCount / (currentTime - lastUpdate))
-        fpsText.Text = "FPS: " .. tostring(fps)
-        
-        -- Reset bộ đếm cho giây tiếp theo
-        frameCount = 0
-        lastUpdate = currentTime
-    end
+    local hue = tick() % 4 / 4 -- Chu kỳ chạy màu 4 giây mượt mà
+    local rgbColor = Color3.fromHSV(hue, 1, 1)
     
-    -- Hiệu ứng đổi màu Chroma RGB (vẫn mượt mà theo từng khung hình)
-    local rainbowHue = (currentTime % 4) / 4 
-    local rgbColor = Color3.fromHSV(rainbowHue, 1, 1)
-    
-    fpsText.TextColor3 = rgbColor
-    uiStrokeText.Color = rgbColor
-    uiStrokeFrame.Color = rgbColor
+    BorderStroke.Color = rgbColor
+    GlowStroke.Color = rgbColor
+    Line1.TextColor3 = rgbColor
+    Line2.TextColor3 = rgbColor
+
+    local ping = 0
+    pcall(function()
+        ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+    end)
+
+    local realTime = os.date("%H:%M:%S")
+    local elapsed = math.floor(tick() - startTime)
+    local mins = math.floor(elapsed / 60)
+    local secs = elapsed % 60
+    local runTime = string.format("%02d:%02d", mins, secs)
+
+    Line1.Text = "FPS: " .. currentFPS .. "  |  PING: " .. ping .. "ms"
+    Line2.Text = "TIME: " .. realTime .. "  |  RUN: " .. runTime
+end)
+
+-- ==========================================
+-- 7. TỐI ƯU HÓA NETWORK & ỔN ĐỊNH PING 
+-- ==========================================
+task.spawn(function()
+    pcall(function()
+        settings().Network.IncomingReplicationLag = 0
+    end)
+    pcall(function()
+        settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.DefaultAuto
+        settings().Physics.AllowSleep = true
+    end)
+    pcall(function()
+        local RenderSettings = settings():GetService("RenderSettings")
+        RenderSettings.EagerBulkExecution = false
+    end)
 end)
