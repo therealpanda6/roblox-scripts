@@ -42,55 +42,48 @@ end)
 -- 3. AUTO-REJOIN (TỰ ĐỘNG VÀO LẠI KHI DISCONNECT)
 -- =========================================
 GuiService.ErrorMessageChanged:Connect(function()
-    task.wait(2) -- Đợi 2 giây sau khi lỗi xuất hiện
+    task.wait(2)
     TeleportService:Teleport(game.PlaceId, LocalPlayer)
 end)
 
 -- =========================================
 -- 4. GIAO DIỆN ĐỒNG HỒ FPS RGB GAMING
 -- =========================================
--- Xác định nơi chứa GUI (Ưu tiên CoreGui, nếu không có quyền thì dùng PlayerGui)
 local guiParent
 local success = pcall(function() guiParent = game:GetService("CoreGui") end)
 if not success or not guiParent then
     guiParent = LocalPlayer:WaitForChild("PlayerGui")
 end
 
--- Tạo ScreenGui chính
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "RGB_FPS_Monitor"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = guiParent
 
--- Frame nền đen
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 140, 0, 45)
 mainFrame.Position = UDim2.new(0.5, -70, 0.05, 0)
-mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15) -- Nền đen nhám
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 mainFrame.BorderSizePixel = 0
 mainFrame.Parent = screenGui
 
--- Hiệu ứng bo góc
 local uiCorner = Instance.new("UICorner")
 uiCorner.CornerRadius = UDim.new(0, 8)
 uiCorner.Parent = mainFrame
 
--- Viền Glow phát sáng RGB (Khung)
 local uiStrokeFrame = Instance.new("UIStroke")
 uiStrokeFrame.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 uiStrokeFrame.Thickness = 2.5
 uiStrokeFrame.Parent = mainFrame
 
--- Label hiển thị FPS
 local fpsText = Instance.new("TextLabel")
 fpsText.Size = UDim2.new(1, 0, 1, 0)
 fpsText.BackgroundTransparency = 1
-fpsText.Text = "FPS: 60"
+fpsText.Text = "FPS: ..."
 fpsText.Font = Enum.Font.GothamBlack
 fpsText.TextSize = 22
 fpsText.Parent = mainFrame
 
--- Hiệu ứng Glow mờ cho chữ (Drop shadow fake glow)
 local uiStrokeText = Instance.new("UIStroke")
 uiStrokeText.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
 uiStrokeText.Thickness = 1.2
@@ -128,22 +121,30 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- Vòng lặp cập nhật FPS và đổi màu RGB
-local frames = 0
-RunService.RenderStepped:Connect(function(deltaTime)
-    frames = frames + 1
+-- =========================================
+-- 5. CẬP NHẬT FPS (MỖI 1 GIÂY) & HIỆU ỨNG RGB
+-- =========================================
+local lastUpdate = tick()
+local frameCount = 0
+
+RunService.RenderStepped:Connect(function()
+    frameCount = frameCount + 1
+    local currentTime = tick()
     
-    -- Cập nhật số FPS (làm tròn số)
-    if frames % 5 == 0 then
-        local currentFPS = math.floor(1 / deltaTime)
-        fpsText.Text = "FPS: " .. tostring(currentFPS)
+    -- Thay đổi điều kiện: Tính toán và cập nhật số FPS đúng mỗi 1.0 giây
+    if currentTime - lastUpdate >= 1.0 then
+        local fps = math.floor(frameCount / (currentTime - lastUpdate))
+        fpsText.Text = "FPS: " .. tostring(fps)
+        
+        -- Reset bộ đếm cho giây tiếp theo
+        frameCount = 0
+        lastUpdate = currentTime
     end
     
-    -- Logic Chroma RGB (Sử dụng tick() để đổi màu liên tục)
-    local rainbowHue = (tick() % 4) / 4 -- Chu kỳ 4 giây đổi đủ hệ màu
+    -- Hiệu ứng đổi màu Chroma RGB (vẫn mượt mà theo từng khung hình)
+    local rainbowHue = (currentTime % 4) / 4 
     local rgbColor = Color3.fromHSV(rainbowHue, 1, 1)
     
-    -- Áp dụng màu cho chữ và viền phát sáng
     fpsText.TextColor3 = rgbColor
     uiStrokeText.Color = rgbColor
     uiStrokeFrame.Color = rgbColor
