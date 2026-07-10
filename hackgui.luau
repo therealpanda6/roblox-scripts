@@ -1,4 +1,4 @@
--- [[ CYBERPUNK SCI-FI SYSTEM - VERSION 3.0 ]] --
+-- [[ CYBERPUNK SCI-FI SYSTEM - VERSION 4.1 ]] --
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -7,21 +7,23 @@ local Camera = workspace.CurrentCamera
 -- Cấu hình trạng thái (State)
 local CyberState = {
     SpeedActive = false,
-    TargetSpeed = 100, -- Tốc độ mặc định khi bật
+    TargetSpeed = 100,
     JumpActive = false,
-    TargetJump = 150,  -- Độ cao mặc định khi bật
+    TargetJump = 150,
     InfJump = false,
     ESP = false,
     Noclip = false,
+    GodMode = false,
     Aimbot = false,
-    TargetMode = "Nearest",
+    TargetMode = "Nearest", -- "Nearest", "Furthest", "Selected", "Random"
     SelectedPlayer = nil,
+    RandomPlayer = nil,
     POVActive = false
 }
 
 -- Khởi tạo GUI chính
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "CyberSystem_V3"
+ScreenGui.Name = "CyberSystem_V4_1"
 ScreenGui.DisplayOrder = 999999999
 ScreenGui.ResetOnSpawn = false
 pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
@@ -29,8 +31,8 @@ if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("Player
 
 -- Frame Chính
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 580, 0, 420)
-MainFrame.Position = UDim2.new(0.5, -290, 0.5, -210)
+MainFrame.Size = UDim2.new(0, 580, 0, 460)
+MainFrame.Position = UDim2.new(0.5, -290, 0.5, -230)
 MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
 MainFrame.BorderSizePixel = 2
 MainFrame.BorderColor3 = Color3.fromRGB(0, 240, 255)
@@ -49,14 +51,14 @@ local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(1, -10, 1, 0)
 TitleText.Position = UDim2.new(0, 15, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "> CYBER_OVERRIDE_V3.SYS"
+TitleText.Text = "> CYBER_OVERRIDE_V4.1.SYS"
 TitleText.TextColor3 = Color3.fromRGB(0, 240, 255)
 TitleText.Font = Enum.Font.Code
 TitleText.TextSize = 18
 TitleText.TextXAlignment = Enum.TextXAlignment.Left
 TitleText.Parent = TitleBar
 
--- Hàm tiện ích tạo nút bấm
+-- Hàm tạo nút
 local function createButton(text, size, parent)
     local btn = Instance.new("TextButton")
     btn.Size = size
@@ -99,11 +101,8 @@ RightSide.Parent = MainFrame
 
 local LeftLayout = Instance.new("UIListLayout")
 LeftLayout.Parent = LeftSide
-LeftLayout.Padding = UDim.new(0, 10)
-LeftLayout.SortOrder = Enum.SortOrder.LayoutOrder
+LeftLayout.Padding = UDim.new(0, 8)
 
--- --- CỘT TRÁI (MOVEMENT & ESP) ---
--- Tạo chức năng tùy chỉnh Speed
 local SpeedFrame = Instance.new("Frame")
 SpeedFrame.Size = UDim2.new(1, 0, 0, 35)
 SpeedFrame.BackgroundTransparency = 1
@@ -120,7 +119,6 @@ SpeedInput.Font = Enum.Font.Code
 SpeedInput.Text = tostring(CyberState.TargetSpeed)
 SpeedInput.Parent = SpeedFrame
 
--- Tạo chức năng tùy chỉnh Jump
 local JumpFrame = Instance.new("Frame")
 JumpFrame.Size = UDim2.new(1, 0, 0, 35)
 JumpFrame.BackgroundTransparency = 1
@@ -140,12 +138,12 @@ JumpInput.Parent = JumpFrame
 local InfJumpBtn = createButton("INF JUMP", UDim2.new(1, 0, 0, 35), LeftSide)
 local NoclipBtn = createButton("NO CLIP", UDim2.new(1, 0, 0, 35), LeftSide)
 local ESPBtn = createButton("ESP PLAYER", UDim2.new(1, 0, 0, 35), LeftSide)
+local GodBtn = createButton("GOD MODE", UDim2.new(1, 0, 0, 35), LeftSide)
 
-
--- --- CỘT PHẢI (TARGETING & COMBAT) ---
+-- --- CỘT PHẢI ---
 local RightLayout = Instance.new("UIListLayout")
 RightLayout.Parent = RightSide
-RightLayout.Padding = UDim.new(0, 10)
+RightLayout.Padding = UDim.new(0, 8)
 
 local SelectedLabel = Instance.new("TextLabel")
 SelectedLabel.Size = UDim2.new(1, 0, 0, 20)
@@ -157,9 +155,8 @@ SelectedLabel.TextSize = 13
 SelectedLabel.TextXAlignment = Enum.TextXAlignment.Left
 SelectedLabel.Parent = RightSide
 
--- FIX DROPDOWN: Kích hoạt Scrolling động
 local DropdownScroll = Instance.new("ScrollingFrame")
-DropdownScroll.Size = UDim2.new(1, 0, 0, 120)
+DropdownScroll.Size = UDim2.new(1, 0, 0, 140)
 DropdownScroll.BackgroundColor3 = Color3.fromRGB(15, 20, 30)
 DropdownScroll.BorderColor3 = Color3.fromRGB(0, 240, 255)
 DropdownScroll.ScrollBarThickness = 5
@@ -170,7 +167,6 @@ DropdownLayout.Parent = DropdownScroll
 DropdownLayout.SortOrder = Enum.SortOrder.Name
 DropdownLayout.Padding = UDim.new(0, 2)
 
--- Tự động điều chỉnh kích thước thanh cuộn để hiện HẾT người chơi
 DropdownLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     DropdownScroll.CanvasSize = UDim2.new(0, 0, 0, DropdownLayout.AbsoluteContentSize.Y)
 end)
@@ -188,76 +184,47 @@ local TPBtn = createButton("EXECUTE TELEPORT", UDim2.new(1, 0, 0, 35), RightSide
 TPBtn.Text = "[ EXECUTE TELEPORT ]"
 
 local TargetModeBtn = Instance.new("TextButton")
-TargetModeBtn.Size = UDim2.new(1, 0, 0, 30)
+TargetModeBtn.Size = UDim2.new(1, 0, 0, 35)
 TargetModeBtn.BackgroundColor3 = Color3.fromRGB(0, 80, 100)
 TargetModeBtn.Text = "TARGET MODE: NEAREST"
 TargetModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 TargetModeBtn.Font = Enum.Font.Code
 TargetModeBtn.Parent = RightSide
 
-
--- --- LOGIC EVENT HANDLERS ---
-
--- Input số cho Speed & Jump
-SpeedInput.FocusLost:Connect(function()
-    local val = tonumber(SpeedInput.Text)
-    if val then CyberState.TargetSpeed = val else SpeedInput.Text = tostring(CyberState.TargetSpeed) end
-end)
-
-JumpInput.FocusLost:Connect(function()
-    local val = tonumber(JumpInput.Text)
-    if val then CyberState.TargetJump = val else JumpInput.Text = tostring(CyberState.TargetJump) end
-end)
-
-SpeedBtn.MouseButton1Click:Connect(function()
-    CyberState.SpeedActive = not CyberState.SpeedActive
-    toggleVisual(SpeedBtn, CyberState.SpeedActive)
-end)
-
-JumpBtn.MouseButton1Click:Connect(function()
-    CyberState.JumpActive = not CyberState.JumpActive
-    toggleVisual(JumpBtn, CyberState.JumpActive)
-end)
-
-InfJumpBtn.MouseButton1Click:Connect(function()
-    CyberState.InfJump = not CyberState.InfJump
-    toggleVisual(InfJumpBtn, CyberState.InfJump)
-end)
-
-NoclipBtn.MouseButton1Click:Connect(function()
-    CyberState.Noclip = not CyberState.Noclip
-    toggleVisual(NoclipBtn, CyberState.Noclip)
-end)
-
-ESPBtn.MouseButton1Click:Connect(function()
-    CyberState.ESP = not CyberState.ESP
-    toggleVisual(ESPBtn, CyberState.ESP)
-end)
-
-AimBtn.MouseButton1Click:Connect(function()
-    CyberState.Aimbot = not CyberState.Aimbot
-    toggleVisual(AimBtn, CyberState.Aimbot)
-end)
-
-POVBtn.MouseButton1Click:Connect(function()
-    CyberState.POVActive = not CyberState.POVActive
-    toggleVisual(POVBtn, CyberState.POVActive)
-    if not CyberState.POVActive then
-        Camera.CameraSubject = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+-- --- LOGIC KIỂM TRA PLAYER CÒN SỐNG ---
+local function isAlive(player)
+    if player and player.Character then
+        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid and humanoid.Health > 0 then return true end
     end
-end)
+    return false
+end
 
-TargetModeBtn.MouseButton1Click:Connect(function()
-    if CyberState.TargetMode == "Nearest" then CyberState.TargetMode = "Furthest"
-    elseif CyberState.TargetMode == "Furthest" then CyberState.TargetMode = "Selected"
-    else CyberState.TargetMode = "Nearest" end
-    TargetModeBtn.Text = "TARGET MODE: " .. CyberState.TargetMode:upper()
-end)
+-- --- HÀM TẠO RANDOM PLAYER MỚI KHI BẤM NÚT ---
+local function rollNewRandomPlayer()
+    local alivePlayers = {}
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and isAlive(p) then
+            table.insert(alivePlayers, p)
+        end
+    end
+    if #alivePlayers > 0 then
+        CyberState.RandomPlayer = alivePlayers[math.random(1, #alivePlayers)]
+    else
+        CyberState.RandomPlayer = nil
+    end
+end
 
--- Lấy mục tiêu
+-- --- HÀM TÌM KIẾM MỤC TIÊU HIỆN TẠI ---
 local function getTarget()
-    if CyberState.TargetMode == "Selected" and CyberState.SelectedPlayer then
-        return CyberState.SelectedPlayer
+    if CyberState.TargetMode == "Selected" then
+        return isAlive(CyberState.SelectedPlayer) and CyberState.SelectedPlayer or nil
+    end
+    
+    if CyberState.TargetMode == "Random" then
+        -- Vẫn tự động roll lại nếu mục tiêu random hiện tại lỡ chết giữa chừng
+        if not isAlive(CyberState.RandomPlayer) then rollNewRandomPlayer() end
+        return CyberState.RandomPlayer
     end
     
     local target = nil
@@ -266,7 +233,7 @@ local function getTarget()
     if not myPos then return nil end
 
     for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+        if p ~= LocalPlayer and isAlive(p) and p.Character:FindFirstChild("HumanoidRootPart") then
             local d = (p.Character.HumanoidRootPart.Position - myPos).Magnitude
             if CyberState.TargetMode == "Nearest" then
                 if d < dist then dist = d; target = p end
@@ -278,7 +245,60 @@ local function getTarget()
     return target
 end
 
+-- --- SỰ KIỆN CLICK ---
+SpeedInput.FocusLost:Connect(function()
+    local val = tonumber(SpeedInput.Text)
+    if val then CyberState.TargetSpeed = val else SpeedInput.Text = tostring(CyberState.TargetSpeed) end
+end)
+
+JumpInput.FocusLost:Connect(function()
+    local val = tonumber(JumpInput.Text)
+    if val then CyberState.TargetJump = val else JumpInput.Text = tostring(CyberState.TargetJump) end
+end)
+
+SpeedBtn.MouseButton1Click:Connect(function() CyberState.SpeedActive = not CyberState.SpeedActive; toggleVisual(SpeedBtn, CyberState.SpeedActive) end)
+JumpBtn.MouseButton1Click:Connect(function() CyberState.JumpActive = not CyberState.JumpActive; toggleVisual(JumpBtn, CyberState.JumpActive) end)
+InfJumpBtn.MouseButton1Click:Connect(function() CyberState.InfJump = not CyberState.InfJump; toggleVisual(InfJumpBtn, CyberState.InfJump) end)
+NoclipBtn.MouseButton1Click:Connect(function() CyberState.Noclip = not CyberState.Noclip; toggleVisual(NoclipBtn, CyberState.Noclip) end)
+GodBtn.MouseButton1Click:Connect(function() CyberState.GodMode = not CyberState.GodMode; toggleVisual(GodBtn, CyberState.GodMode) end)
+ESPBtn.MouseButton1Click:Connect(function() CyberState.ESP = not CyberState.ESP; toggleVisual(ESPBtn, CyberState.ESP) end)
+
+-- KHI BẤM NÚT AIMBOT: Nếu đang chế độ Random -> Random người mới ngay
+AimBtn.MouseButton1Click:Connect(function()
+    CyberState.Aimbot = not CyberState.Aimbot
+    if CyberState.Aimbot and CyberState.TargetMode == "Random" then
+        rollNewRandomPlayer()
+    end
+    toggleVisual(AimBtn, CyberState.Aimbot)
+end)
+
+-- KHI BẤM NÚT POV (SPECTATE): Nếu đang chế độ Random -> Random người mới ngay
+POVBtn.MouseButton1Click:Connect(function()
+    CyberState.POVActive = not CyberState.POVActive
+    if CyberState.POVActive and CyberState.TargetMode == "Random" then
+        rollNewRandomPlayer()
+    end
+    toggleVisual(POVBtn, CyberState.POVActive)
+    if not CyberState.POVActive then
+        Camera.CameraSubject = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+    end
+end)
+
+TargetModeBtn.MouseButton1Click:Connect(function()
+    if CyberState.TargetMode == "Nearest" then CyberState.TargetMode = "Furthest"
+    elseif CyberState.TargetMode == "Furthest" then CyberState.TargetMode = "Selected"
+    elseif CyberState.TargetMode == "Selected" then 
+        CyberState.TargetMode = "Random"
+        rollNewRandomPlayer() -- Roll sẵn 1 người khi vừa chuyển sang mode Random
+    else CyberState.TargetMode = "Nearest" end
+    TargetModeBtn.Text = "TARGET MODE: " .. CyberState.TargetMode:upper()
+end)
+
+-- KHI BẤM NÚT TELEPORT: Nếu đang chế độ Random -> Random người mới ngay
 TPBtn.MouseButton1Click:Connect(function()
+    if CyberState.TargetMode == "Random" then
+        rollNewRandomPlayer()
+    end
     local t = getTarget()
     if t and t.Character and LocalPlayer.Character then
         LocalPlayer.Character.HumanoidRootPart.CFrame = t.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 4)
@@ -297,8 +317,9 @@ task.spawn(function()
                 local pBtn = Instance.new("TextButton")
                 pBtn.Size = UDim2.new(1, -10, 0, 25)
                 pBtn.BackgroundColor3 = (CyberState.SelectedPlayer == p) and Color3.fromRGB(0, 150, 180) or Color3.fromRGB(25, 30, 40)
-                pBtn.Text = p.Name
-                pBtn.TextColor3 = (CyberState.SelectedPlayer == p) and Color3.new(0,0,0) or Color3.new(1,1,1)
+                local status = isAlive(p) and "" or " [DEAD]"
+                pBtn.Text = p.Name .. status
+                pBtn.TextColor3 = (CyberState.SelectedPlayer == p) and Color3.new(0,0,0) or (isAlive(p) and Color3.new(1,1,1) or Color3.fromRGB(150,50,50))
                 pBtn.Font = Enum.Font.Code
                 pBtn.TextSize = 12
                 pBtn.Parent = DropdownScroll
@@ -315,20 +336,21 @@ task.spawn(function()
     end
 end)
 
--- --- MAIN LOOPS ---
--- Loop 1: Movement, Noclip & ESP
+-- --- MAIN LOOPS (Delay 0.01s) ---
+-- Loop 1: Movement, Noclip, God Mode & ESP
 task.spawn(function()
     while true do
-        task.wait()
+        task.wait(0.01)
         local char = LocalPlayer.Character
         if char then
             local hum = char:FindFirstChildOfClass("Humanoid")
             if hum then
                 hum.WalkSpeed = CyberState.SpeedActive and CyberState.TargetSpeed or 16
                 hum.JumpPower = CyberState.JumpActive and CyberState.TargetJump or 50
-                -- Dòng dưới đây sửa lỗi các game ghi đè JumpPower
                 if CyberState.JumpActive then hum.UseJumpPower = true end
+                if CyberState.GodMode then hum.Health = hum.MaxHealth end
             end
+            
             if CyberState.Noclip then
                 for _, v in pairs(char:GetChildren()) do
                     if v:IsA("BasePart") then v.CanCollide = false end
@@ -339,7 +361,7 @@ task.spawn(function()
         for _, p in pairs(Players:GetPlayers()) do
             if p ~= LocalPlayer and p.Character then
                 local high = p.Character:FindFirstChild("CyberESP")
-                if CyberState.ESP then
+                if CyberState.ESP and isAlive(p) then
                     if not high then
                         high = Instance.new("Highlight")
                         high.Name = "CyberESP"
@@ -356,8 +378,15 @@ end)
 -- Loop 2: Aimbot & POV
 task.spawn(function()
     while true do
-        task.wait()
+        task.wait(0.01)
         local target = getTarget()
+        
+        if target then
+            SelectedLabel.Text = "TARGET: " .. target.Name:upper()
+        else
+            SelectedLabel.Text = "TARGET: NONE / DEAD"
+        end
+        
         if target and target.Character then
             if CyberState.Aimbot then
                 local head = target.Character:FindFirstChild("Head")
@@ -371,7 +400,7 @@ task.spawn(function()
     end
 end)
 
--- Loop 3: Inf Jump
+-- Loop 3: Infinite Jump
 UserInputService.JumpRequest:Connect(function()
     if CyberState.InfJump and LocalPlayer.Character then
         local h = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
