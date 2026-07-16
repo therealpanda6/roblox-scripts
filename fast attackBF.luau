@@ -1,3 +1,4 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/nvb201112/fast-attack-blox-fruits/refs/heads/main/aurafruit.luau"))()
 _G.FastAttack = true
 
 if _G.FastAttack then
